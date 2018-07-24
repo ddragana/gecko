@@ -3071,12 +3071,7 @@ nsSocketTransport::OnLookupByTypeComplete(nsICancelable      *request,
     MOZ_ASSERT(mDNSTxtRequest == request);
     mDNSTxtRequest = nullptr;
 
-    // todo .. why are we canceling the A lookup because the TXT lookup failed?
-    if (NS_FAILED(status) && (status != NS_ERROR_UNKNOWN_HOST) &&
-        mDNSRequest) {
-        mDNSRequest->Cancel(NS_ERROR_ABORT);
-        mDNSRequest = nullptr;
-    } else if (NS_SUCCEEDED(status)) {
+    if (NS_SUCCEEDED(status)) {
         nsTArray<nsCString> txtRecordSet;
         txtResponse->GetRecords(txtRecordSet);
         for (uint32_t i = 0; i < txtRecordSet.Length(); ++i) {

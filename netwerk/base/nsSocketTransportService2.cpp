@@ -55,7 +55,7 @@ static Atomic<PRThread*, Relaxed> gSocketThread;
 #define TELEMETRY_PREF "toolkit.telemetry.enabled"
 #define MAX_TIME_FOR_PR_CLOSE_DURING_SHUTDOWN "network.sts.max_time_for_pr_close_during_shutdown"
 #define POLLABLE_EVENT_TIMEOUT "network.sts.pollable_event_timeout"
-#define ESNI_ENABLED "network.sts.esni_enabled"
+#define ESNI_ENABLED "network.security.esni.enabled"
 
 #define REPAIR_POLLABLE_EVENT_TIME 10
 

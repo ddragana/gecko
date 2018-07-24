@@ -1782,7 +1782,7 @@ pref("network.http.active_tab_priority", true);
 #endif
 
 // Enable/disable sni encryption.
-pref("network.sts.esni_enabled", true);
+pref("network.security.esni.enabled", true);
 
 // default values for FTP
 // in a DSCP environment this should be 40 (0x28, or AF11), per RFC-4594,
