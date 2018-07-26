@@ -1127,39 +1127,40 @@ nsSocketTransport::ResolveHost()
                                  mOriginAttributes,
                                  getter_AddRefs(mDNSRequest));
 
-    if (NS_SUCCEEDED(rv)) {
-        if (mSocketTransportService->IsEsniEnabled()) {
-            bool isSSL = false;
-            for (unsigned int i = 0; i < mTypeCount; ++i) {
-                if (!strcmp(mTypes[i], "ssl")) {
-                  isSSL = true;
-                  break;
-                }
+    if (NS_SUCCEEDED(rv) &&
+        !(mConnectionFlags & (DONT_TRY_ESNI | BE_CONSERVATIVE)) &&
+        mSocketTransportService->IsEsniEnabled()) {
+
+        bool isSSL = false;
+        for (unsigned int i = 0; i < mTypeCount; ++i) {
+            if (!strcmp(mTypes[i], "ssl")) {
+                isSSL = true;
+                break;
             }
-            if (isSSL) {
-                SOCKET_LOG((" look for esni txt record"));
-                nsAutoCString esniHost;
-                esniHost.Append("_esni.");
-                // This might end up being the SocketHost
-                // see https://github.com/ekr/draft-rescorla-tls-esni/issues/61
-                esniHost.Append(mOriginHost);
-                rv = dns->AsyncResolveByTypeNative(esniHost,
-                                                   nsIDNSService::RESOLVE_TYPE_TXT,
-                                                   dnsFlags,
-                                                   this,
-                                                   mSocketTransportService,
-                                                   mOriginAttributes,
-                                                   getter_AddRefs(mDNSTxtRequest));
-                if (NS_FAILED(rv) && (rv != NS_ERROR_UNKNOWN_HOST)) {
-                    SOCKET_LOG(("  dns request by type failed, canceling the "
-                                "main dns request."));
-                    mDNSRequest->Cancel(NS_ERROR_ABORT);
-                    mDNSRequest = nullptr;
-                    mDNSTxtRequest = nullptr;
-                } else if (rv == NS_ERROR_UNKNOWN_HOST) {
-                    mDNSTxtRequest = nullptr;
-                    rv = NS_OK;
-                }
+        }
+        if (isSSL) {
+            SOCKET_LOG((" look for esni txt record"));
+            nsAutoCString esniHost;
+            esniHost.Append("_esni.");
+            // This might end up being the SocketHost
+            // see https://github.com/ekr/draft-rescorla-tls-esni/issues/61
+            esniHost.Append(mOriginHost);
+            rv = dns->AsyncResolveByTypeNative(esniHost,
+                                               nsIDNSService::RESOLVE_TYPE_TXT,
+                                               dnsFlags,
+                                               this,
+                                               mSocketTransportService,
+                                               mOriginAttributes,
+                                               getter_AddRefs(mDNSTxtRequest));
+            if (NS_FAILED(rv) && (rv != NS_ERROR_UNKNOWN_HOST)) {
+                SOCKET_LOG(("  dns request by type failed, canceling the "
+                            "main dns request."));
+                mDNSRequest->Cancel(NS_ERROR_ABORT);
+                mDNSRequest = nullptr;
+                mDNSTxtRequest = nullptr;
+            } else if (rv == NS_ERROR_UNKNOWN_HOST) {
+                mDNSTxtRequest = nullptr;
+                rv = NS_OK;
             }
         }
     }

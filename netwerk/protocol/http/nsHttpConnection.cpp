@@ -507,6 +507,11 @@ nsHttpConnection::EnsureNPNComplete(nsresult &aOut0RTTWriteHandshakeValue,
              this, mConnInfo->HashKey().get(), negotiatedNPN.get(),
              mTLSFilter ? " [Double Tunnel]" : ""));
 
+        int16_t tlsVersion;
+        ssl->GetSSLVersionUsed(&tlsVersion);
+        mConnInfo->SetLessThanTls13((tlsVersion < nsISSLSocketControl::TLS_VERSION_1_3) &&
+                                    (tlsVersion != nsISSLSocketControl::SSL_VERSION_UNKNOWN));
+
         bool earlyDataAccepted = false;
         if (mWaitingFor0RTTResponse) {
             // Check if early data has been accepted.
@@ -523,8 +528,6 @@ nsHttpConnection::EnsureNPNComplete(nsresult &aOut0RTTWriteHandshakeValue,
             }
         }
 
-        int16_t tlsVersion;
-        ssl->GetSSLVersionUsed(&tlsVersion);
         // Send the 0RTT telemetry only for tls1.3
         if (tlsVersion > nsISSLSocketControl::TLS_VERSION_1_2) {
             Telemetry::Accumulate(Telemetry::TLS_EARLY_DATA_NEGOTIATED,
