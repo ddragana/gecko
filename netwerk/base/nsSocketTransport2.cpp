@@ -773,6 +773,7 @@ nsSocketTransport::nsSocketTransport()
     , mAttached(false)
     , mInputClosed(true)
     , mOutputClosed(true)
+    , mEsniQueried(false)
     , mResolving(false)
     , mNetAddrIsSet(false)
     , mSelfAddrIsSet(false)
@@ -1127,6 +1128,7 @@ nsSocketTransport::ResolveHost()
                                  mOriginAttributes,
                                  getter_AddRefs(mDNSRequest));
 
+    mEsniQueried = false;
     if (NS_SUCCEEDED(rv) &&
         !(mConnectionFlags & (DONT_TRY_ESNI | BE_CONSERVATIVE)) &&
         mSocketTransportService->IsEsniEnabled()) {
@@ -1161,6 +1163,8 @@ nsSocketTransport::ResolveHost()
             } else if (rv == NS_ERROR_UNKNOWN_HOST) {
                 mDNSTxtRequest = nullptr;
                 rv = NS_OK;
+            } else {
+                mEsniQueried = true;
             }
         }
     }
@@ -3013,6 +3017,9 @@ nsSocketTransport::OnLookupComplete(nsICancelable *request,
 
     // flag host lookup complete for the benefit of the ResolveHost method.
     if (!mDNSTxtRequest) {
+        if (mEsniQueried) {
+          Telemetry::Accumulate(Telemetry::ESNI_KEYS_RECORD_FETCH_DELAYS, 0);
+        }
         mResolving = false;
         nsresult rv = PostEvent(MSG_DNS_LOOKUP_COMPLETE, status, nullptr);
 
@@ -3024,6 +3031,7 @@ nsSocketTransport::OnLookupComplete(nsICancelable *request,
            NS_WARNING("unable to post DNS lookup complete message");
     } else {
         mDNSRequest = nullptr;
+        mDNSARequestFinished = PR_IntervalNow();
     }
 
     return NS_OK;
@@ -3079,9 +3087,13 @@ nsSocketTransport::OnLookupByTypeComplete(nsICancelable      *request,
             mDNSRecordTxt.Append(TrimWhitespace(txtRecordSet[i]));
         }
     }
+    Telemetry::Accumulate(Telemetry::ESNI_KEYS_RECORDS_FOUND,
+                          NS_SUCCEEDED(status));
     // flag host lookup complete for the benefit of the ResolveHost method.
     if (!mDNSRequest) {
         mResolving = false;
+        Telemetry::Accumulate(Telemetry::ESNI_KEYS_RECORD_FETCH_DELAYS,
+                              PR_IntervalToMilliseconds(PR_IntervalNow() - mDNSARequestFinished));
         if (status == NS_ERROR_UNKNOWN_HOST) {
             status = NS_OK;
         }
